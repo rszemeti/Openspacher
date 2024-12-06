@@ -70,6 +70,14 @@ class StateMachine:
             State.SHUTDOWN: self.run_stage_handler
         }
 
+        self.state_transitions = {
+            State.IDLE: self.idle_transitions,
+            State.START: lambda: self.current_state,  # Controlled by handler
+            State.HIGH: lambda: self.current_state,   # Controlled by handler
+            State.LOW: lambda: self.current_state,    # Controlled by handler
+            State.SHUTDOWN: lambda: self.current_state  # Controlled by handler
+        }
+
     def init_start_handler(self):
         return StageHandler(
             stages=[
@@ -120,9 +128,8 @@ class StateMachine:
             self.handlers[self.current_state] = self.init_shutdown_handler()
             return
 
-
-        if self.current_state not in self.handlers:
-            # Initialize the handler for this state
+        # Always reinitialize the handler for the current state to reset it
+        if self.current_state not in self.handlers or self.handlers[self.current_state].current_stage_index >= len(self.handlers[self.current_state].stages):
             if self.current_state == State.HIGH:
                 self.handlers[self.current_state] = self.init_high_handler()
             elif self.current_state == State.LOW:
@@ -138,6 +145,7 @@ class StateMachine:
             print(f"{self.current_state.name} complete. Transitioning to {next_state.name}.")
             self.current_state = next_state
 
+
     def idle_transitions(self):
         if self.control_signals["RUN"]:
             return State.START
@@ -145,13 +153,6 @@ class StateMachine:
 
     def run(self):
         """Main loop for the state machine."""
-        state_transitions = {
-            State.IDLE: self.idle_transitions,
-            State.START: lambda: self.current_state,  # Controlled by handler
-            State.HIGH: lambda: self.current_state,   # Controlled by handler
-            State.LOW: lambda: self.current_state,    # Controlled by handler
-            State.SHUTDOWN: lambda: self.current_state  # Controlled by handler
-        }
 
         while True:
             # Perform the current state's action
@@ -159,7 +160,7 @@ class StateMachine:
 
             # Determine the next state
             if self.current_state == State.IDLE:
-                next_state = state_transitions[self.current_state]()
+                next_state = self.state_transitions[self.current_state]()
                 if next_state != self.current_state:
                     print(f"Transitioning from {self.current_state.name} to {next_state.name}")
                     self.current_state = next_state
