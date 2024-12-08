@@ -19,7 +19,7 @@
 
 #define LARGE_TO_SMALL_THRESHOLD 85
 #define SMALL_TO_LARGE_THRESHOLD 72
-
+#define OVERTEMP_THRESHOLD 90
 
 
 // Define shutdown stages

@@ -5,13 +5,31 @@
 // Global pointer for condition lambdas
 static StateMachine* smInstance = nullptr;
 
-// Helper condition functions
-bool StateMachine::largeCondition() {
-    return smInstance && smInstance->hardware.getWaterTemp() > SMALL_TO_LARGE_THRESHOLD;
+State StateMachine::largeCondition() {
+    if (smInstance) {
+        int waterTemp = smInstance->hardware.getWaterTemp();
+
+        if (waterTemp > OVERTEMP_THRESHOLD) {
+            return State::SHUTDOWN;
+        } else if (waterTemp > LARGE_TO_SMALL_THRESHOLD) {
+            return State::SMALL;
+        }
+    }
+    return State::LARGE;
 }
 
-bool StateMachine::smallCondition() {
-    return smInstance && smInstance->hardware.getWaterTemp() < LARGE_TO_SMALL_THRESHOLD;
+
+State StateMachine::smallCondition() {
+    if (smInstance) {
+        int waterTemp = smInstance->hardware.getWaterTemp();
+
+        if (waterTemp > OVERTEMP_THRESHOLD) {
+            return State::SHUTDOWN;
+        } else if (waterTemp < SMALL_TO_LARGE_THRESHOLD) {
+            return State::LARGE;
+        }
+    }
+    return State::SMALL;
 }
 
 // Linear interpolation helper
@@ -123,26 +141,20 @@ void StateMachine::tickHandler() {
     Serial.println(interpolatedFuelPump);
 
     // Check if the stage is complete
-    if (currentStage.duration > 0.0 && elapsedTime >= currentStage.duration * 1000) {
+    if (elapsedTime >= currentStage.duration * 1000) {
         currentStageIndex++;
         stageStartTime = millis();
 
-        // Check if this is the final stage
+        // Final stage logic
         if (currentStageIndex >= totalStages) {
-            // Call the helper function for transition check
-            Serial.println("Final stage completed. Checking for transition...");
-            // Perform any additional logic for state transition here
-        }
-    } else if (currentStage.condition && currentStage.condition()) {
-        currentStageIndex++;
-        stageStartTime = millis();
+            State transitionState = currentStage.condition ? currentStage.condition() : nextState;
 
-        // Check if this is the final stage
-        if (currentStageIndex >= totalStages) {
-            // Call the helper function for transition check
-            Serial.println("Final stage completed. Checking for transition...");
-            // Perform any additional logic for state transition here
+            // Handle state transition
+            if (transitionState != currentState) {
+                Serial.println("Transitioning to next state.");
+                currentState = transitionState;
+                resetHandler(currentState);
+            }
         }
     }
 }
-

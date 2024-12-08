@@ -12,15 +12,16 @@ struct Range {
 
 // Define the structure for a stage
 struct Stage {
-    const char* message;   // Log message for the stage
-    float duration;        // Duration of the stage in seconds
-    bool (*condition)();   // Optional condition pointer to exit the stage
-    bool waterPumpState;   // Water pump state: true = ON, false = OFF
-    bool blowerState;      // Blower state: true = ON, false = OFF
-    bool glowState;        // Glow plug state: true = ON, false = OFF
-    Range fanSpeed;        // Start and end values for fan speed
-    Range fuelPump;        // Start and end values for fuel pump
+    const char* message;
+    float duration;
+    State (*condition)();  // Returns the next state
+    bool waterPumpState;
+    bool blowerState;
+    bool glowState;
+    Range fanSpeed;
+    Range fuelPump;
 };
+
 
 // Define state names
 enum State {
@@ -65,8 +66,8 @@ public:
     State getCurrentState() const { return currentState; }
 
     // Helper functions for conditions
-    static bool largeCondition();
-    static bool smallCondition();
+    static State largeCondition();
+    static State smallCondition();
 };
 
 #endif // STATEMACHINE_H
