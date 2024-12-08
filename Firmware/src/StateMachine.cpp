@@ -103,25 +103,22 @@ void StateMachine::tickHandler() {
     // Set digital states via hardware abstraction
     hardware.setWaterPumpState(currentStage.waterPumpState);
     hardware.setBlowerState(currentStage.blowerState);
+    hardware.setGlowState(currentStage.glowState);
 
     // Calculate elapsed time
     unsigned long elapsedTime = millis() - stageStartTime;
 
     // Interpolate analog values
     int interpolatedFanSpeed = linearInterpolate(currentStage.fanSpeed.start, currentStage.fanSpeed.end, elapsedTime, currentStage.duration);
-    int interpolatedGlowVolts = linearInterpolate(currentStage.glowVolts.start, currentStage.glowVolts.end, elapsedTime, currentStage.duration);
     int interpolatedFuelPump = linearInterpolate(currentStage.fuelPump.start, currentStage.fuelPump.end, elapsedTime, currentStage.duration);
 
     // Write interpolated values to hardware
     hardware.setFanSpeed(interpolatedFanSpeed);
-    hardware.setGlowVoltage(interpolatedGlowVolts);
     hardware.setFuelPumpSpeed(interpolatedFuelPump);
 
     // Log interpolated values
     Serial.print("Fan Speed: ");
     Serial.println(interpolatedFanSpeed);
-    Serial.print("Glow Volts: ");
-    Serial.println(interpolatedGlowVolts);
     Serial.print("Fuel Pump: ");
     Serial.println(interpolatedFuelPump);
 

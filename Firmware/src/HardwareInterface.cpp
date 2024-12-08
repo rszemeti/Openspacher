@@ -39,8 +39,8 @@ void HardwareInterface::setBlowerState(bool state) {
     digitalWrite(blowerPin, state ? HIGH : LOW);
 }
 
-void HardwareInterface::setGlowVoltage(uint8_t voltage) {
-    analogWrite(glowVoltsPin, voltage);
+void HardwareInterface::setGlowState(bool state) {
+    analogWrite(blowerPin, state ? GLOW_VOLTS_ON : GLOW_VOLTS_OFF);
 }
 
 void HardwareInterface::setWaterPumpSpeed(uint8_t speed) {

@@ -13,12 +13,12 @@ struct Range {
 // Define the structure for a stage
 struct Stage {
     const char* message;   // Log message for the stage
-    bool waterPumpState;   // Water pump state: true = ON, false = OFF
-    bool blowerState;      // Blower state: true = ON, false = OFF
     float duration;        // Duration of the stage in seconds
     bool (*condition)();   // Optional condition pointer to exit the stage
+    bool waterPumpState;   // Water pump state: true = ON, false = OFF
+    bool blowerState;      // Blower state: true = ON, false = OFF
+    bool glowState;        // Glow plug state: true = ON, false = OFF
     Range fanSpeed;        // Start and end values for fan speed
-    Range glowVolts;       // Start and end values for glow volts
     Range fuelPump;        // Start and end values for fuel pump
 };
 
@@ -46,9 +46,7 @@ private:
     void resetHandler(State state);   // Reset stages and setup for a given state
     void tickHandler();               // Tick through the current stage logic
 
-    // Helper functions for conditions
-    static bool largeCondition();
-    static bool smallCondition();
+
 
 public:
     // Constructor
@@ -65,6 +63,10 @@ public:
 
     // Getters for current state
     State getCurrentState() const { return currentState; }
+
+    // Helper functions for conditions
+    static bool largeCondition();
+    static bool smallCondition();
 };
 
 #endif // STATEMACHINE_H

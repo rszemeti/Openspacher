@@ -15,7 +15,7 @@ public:
     void setFuelPumpSpeed(uint8_t speed);
     void setWaterPumpState(bool state);
     void setBlowerState(bool state);
-    void setGlowVoltage(uint8_t voltage);
+    void setGlowState(bool state);
     void setWaterPumpSpeed(uint8_t speed);
     void setPowerControl(bool state);
 
