@@ -2,29 +2,12 @@
 #define HARDWARE_INTERFACE_H
 
 #include <Arduino.h>
+#include "HardwareConfig.h"
 
+// Define the HardwareInterface class
 class HardwareInterface {
-private:
-    // Pin definitions
-    static const uint8_t fanPin = 5;
-    static const uint8_t fuelPumpPin = 6;
-    static const uint8_t waterPumpPin = 7;
-    static const uint8_t blowerPin = 8;
-    static const uint8_t glowVoltsPin = 9;
-
-    static const uint8_t flameSensePin = A0;
-    static const uint8_t surfaceSensePin = A1;
-    static const uint8_t overtempSensePin = A2;
-
-    static const uint8_t fanCurrentSensePin = A3;
-    static const uint8_t glowCurrentSensePin = A4;
-    static const uint8_t waterPumpCurrentSensePin = A5;
-
-    static const uint8_t waterPumpSpeedPin = 10;
-    static const uint8_t powerCtlPin = 11;
-
 public:
-    // Initialize all hardware components
+    // Initialization
     void init();
 
     // Output controls
@@ -45,6 +28,15 @@ public:
     int readFanCurrent();
     int readGlowCurrent();
     int readWaterPumpCurrent();
+
+    // Derived inputs
+    int getWaterTemp();
+    int getFlameTemp();
+    int getOverTemp();
+
+private:
+    // Interpolation helper
+    int interpolate(int rawValue, const VoltageTempMapping mapping[], size_t size);
 };
 
 #endif // HARDWARE_INTERFACE_H

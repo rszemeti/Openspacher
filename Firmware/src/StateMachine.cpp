@@ -1,15 +1,24 @@
 #include "StateMachine.h"
+#include "HardwareInterface.h"
+#include "Stages.h"
 
 // Global pointer for condition lambdas
 static StateMachine* smInstance = nullptr;
 
 // Helper condition functions
 bool StateMachine::largeCondition() {
-    return smInstance && smInstance->hardware.readSurfaceSensor() > 65.0;
+    return smInstance && smInstance->hardware.getWaterTemp() > 65.0;
 }
 
 bool StateMachine::smallCondition() {
-    return smInstance && smInstance->hardware.readSurfaceSensor() < 55.0;
+    return smInstance && smInstance->hardware.getWaterTemp() < 55.0;
+}
+
+// Linear interpolation helper
+int linearInterpolate(int start, int end, unsigned long elapsedTime, unsigned long duration) {
+    float progress = static_cast<float>(elapsedTime) / (duration * 1000);
+    if (progress > 1.0) progress = 1.0; // Clamp progress
+    return start + static_cast<int>((end - start) * progress);
 }
 
 // Constructor
@@ -17,27 +26,6 @@ StateMachine::StateMachine(HardwareInterface& hw) : hardware(hw), currentState(I
                                                     currentStages(nullptr), totalStages(0), nextState(IDLE),
                                                     runSignal(false) {
     smInstance = this;
-
-    // Initialize stages for SHUTDOWN
-    shutdownStages[0] = {[]() { Serial.println("SHUTDOWN: Stage 1 - Initializing shutdown sequence."); }, 5.0, nullptr};
-    shutdownStages[1] = {[]() { Serial.println("SHUTDOWN: Stage 2 - Finalizing shutdown sequence."); }, 10.0, nullptr};
-
-    // Initialize stages for START
-    startStages[0] = {[]() { Serial.println("START: Stage 1 - Initializing component A."); }, 2.0, nullptr};
-    startStages[1] = {[]() { Serial.println("START: Stage 2 - Initializing component B."); }, 2.0, nullptr};
-    startStages[2] = {[]() { Serial.println("START: Stage 3 - Initializing component C."); }, 2.0, nullptr};
-    startStages[3] = {[]() { Serial.println("START: Stage 4 - Power check."); }, 2.0, nullptr};
-    startStages[4] = {[]() { Serial.println("START: Stage 5 - System ready."); }, 2.0, nullptr};
-
-    // Initialize stages for LARGE (was HIGH)
-    largeStages[0] = {[]() { Serial.print("LARGE: Stage 1 - Increasing power. Temp: "); Serial.println(smInstance->hardware.readSurfaceSensor()); }, 5.0, nullptr};
-    largeStages[1] = {[]() { Serial.print("LARGE: Stage 2 - Monitoring temperature. Temp: "); Serial.println(smInstance->hardware.readSurfaceSensor()); },
-                      0.0, largeCondition};
-
-    // Initialize stages for SMALL (was LOW)
-    smallStages[0] = {[]() { Serial.print("SMALL: Stage 1 - Reducing power. Temp: "); Serial.println(smInstance->hardware.readSurfaceSensor()); }, 5.0, nullptr};
-    smallStages[1] = {[]() { Serial.print("SMALL: Stage 2 - Monitoring temperature. Temp: "); Serial.println(smInstance->hardware.readSurfaceSensor()); },
-                      0.0, smallCondition};
 }
 
 // Initialize the state machine
@@ -72,22 +60,22 @@ void StateMachine::resetHandler(State state) {
     switch (state) {
         case SHUTDOWN:
             currentStages = shutdownStages;
-            totalStages = sizeof(shutdownStages) / sizeof(Stage);
+            totalStages = shutdownStagesCount;
             nextState = IDLE;
             break;
         case START:
             currentStages = startStages;
-            totalStages = sizeof(startStages) / sizeof(Stage);
+            totalStages = startStagesCount;
             nextState = LARGE; // Transition to LARGE after START
             break;
         case LARGE: // Renamed from HIGH
             currentStages = largeStages;
-            totalStages = sizeof(largeStages) / sizeof(Stage);
+            totalStages = largeStagesCount;
             nextState = SMALL; // Transition to SMALL
             break;
         case SMALL: // Renamed from LOW
             currentStages = smallStages;
-            totalStages = sizeof(smallStages) / sizeof(Stage);
+            totalStages = smallStagesCount;
             nextState = LARGE; // Transition to LARGE
             break;
         default:
@@ -109,17 +97,39 @@ void StateMachine::tickHandler() {
 
     Stage& currentStage = currentStages[currentStageIndex];
 
-    // Check if the stage is timed
-    if (currentStage.duration > 0.0) {
-        if (millis() - stageStartTime >= currentStage.duration * 1000) {
-            currentStage.function();
-            currentStageIndex++;
-            stageStartTime = millis();
-        }
-    }
-    // Check if the stage has a condition
-    else if (currentStage.condition && currentStage.condition()) {
-        currentStage.function();
+    // Log the stage message
+    Serial.println(currentStage.message);
+
+    // Set digital states via hardware abstraction
+    hardware.setWaterPumpState(currentStage.waterPumpState);
+    hardware.setBlowerState(currentStage.blowerState);
+
+    // Calculate elapsed time
+    unsigned long elapsedTime = millis() - stageStartTime;
+
+    // Interpolate analog values
+    int interpolatedFanSpeed = linearInterpolate(currentStage.fanSpeed.start, currentStage.fanSpeed.end, elapsedTime, currentStage.duration);
+    int interpolatedGlowVolts = linearInterpolate(currentStage.glowVolts.start, currentStage.glowVolts.end, elapsedTime, currentStage.duration);
+    int interpolatedFuelPump = linearInterpolate(currentStage.fuelPump.start, currentStage.fuelPump.end, elapsedTime, currentStage.duration);
+
+    // Write interpolated values to hardware
+    hardware.setFanSpeed(interpolatedFanSpeed);
+    hardware.setGlowVoltage(interpolatedGlowVolts);
+    hardware.setFuelPumpSpeed(interpolatedFuelPump);
+
+    // Log interpolated values
+    Serial.print("Fan Speed: ");
+    Serial.println(interpolatedFanSpeed);
+    Serial.print("Glow Volts: ");
+    Serial.println(interpolatedGlowVolts);
+    Serial.print("Fuel Pump: ");
+    Serial.println(interpolatedFuelPump);
+
+    // Check if the stage is complete
+    if (currentStage.duration > 0.0 && elapsedTime >= currentStage.duration * 1000) {
+        currentStageIndex++;
+        stageStartTime = millis();
+    } else if (currentStage.condition && currentStage.condition()) {
         currentStageIndex++;
         stageStartTime = millis();
     }

@@ -1,4 +1,5 @@
 #include "HardwareInterface.h"
+#include "HardwareConfig.h"
 
 // Initialize all hardware components
 void HardwareInterface::init() {
@@ -74,4 +75,58 @@ int HardwareInterface::readGlowCurrent() {
 
 int HardwareInterface::readWaterPumpCurrent() {
     return analogRead(waterPumpCurrentSensePin);
+}
+
+// Interpolation function with extrapolation
+int HardwareInterface::interpolate(int rawValue, const VoltageTempMapping mapping[], size_t size) {
+    for (size_t i = 0; i < size - 1; i++) {
+        int x1 = mapping[i].voltage;
+        int y1 = mapping[i].temperature;
+        int x2 = mapping[i + 1].voltage;
+        int y2 = mapping[i + 1].temperature;
+
+        // Check if rawValue is within the current range
+        if (rawValue >= x1 && rawValue <= x2) {
+            // Linear interpolation formula
+            return y1 + (y2 - y1) * (rawValue - x1) / (x2 - x1);
+        }
+    }
+
+    // Extrapolate before the first point
+    if (rawValue < mapping[0].voltage) {
+        int x1 = mapping[0].voltage;
+        int y1 = mapping[0].temperature;
+        int x2 = mapping[1].voltage;
+        int y2 = mapping[1].temperature;
+        return y1 + (y2 - y1) * (rawValue - x1) / (x2 - x1);
+    }
+
+    // Extrapolate after the last point
+    if (rawValue > mapping[size - 1].voltage) {
+        int x1 = mapping[size - 2].voltage;
+        int y1 = mapping[size - 2].temperature;
+        int x2 = mapping[size - 1].voltage;
+        int y2 = mapping[size - 1].temperature;
+        return y1 + (y2 - y1) * (rawValue - x1) / (x2 - x1);
+    }
+
+    return 0; // Default fallback
+}
+
+// Get water temperature
+int HardwareInterface::getWaterTemp() {
+    int rawValue = this->readSurfaceSensor();
+    return interpolate(rawValue, waterTempMapping, sizeof(waterTempMapping) / sizeof(waterTempMapping[0]));
+}
+
+// Get flame temperature
+int HardwareInterface::getFlameTemp() {
+    int rawValue = this->readFlameSensor();
+    return interpolate(rawValue, flameTempMapping, sizeof(flameTempMapping) / sizeof(flameTempMapping[0]));
+}
+
+// Get over-temperature value
+int HardwareInterface::getOverTemp() {
+    int rawValue = this->readOvertempSensor();
+    return interpolate(rawValue, overTempMapping, sizeof(overTempMapping) / sizeof(overTempMapping[0]));
 }
