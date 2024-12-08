@@ -9,13 +9,18 @@
 #define FAN_SPEED_MEDIUM 80
 #define FAN_SPEED_LARGE 200
 
-#define FUEL_PUMP_OFF 0
-#define FUEL_PUMP_LOW 10
-#define FUEL_PUMP_MEDIUM 50
-#define FUEL_PUMP_HIGH 100
+#define FUEL_PUMP_OFF 0         // Milliliters per hour
+#define FUEL_PUMP_LOW 270
+#define FUEL_PUMP_MEDIUM 480
+#define FUEL_PUMP_HIGH 620  
 
-#define GLOW_VOLTS_ON 8.2
+#define GLOW_VOLTS_ON 8.2       // Volts
 #define GLOW_VOLTS_OFF 0
+
+#define LARGE_TO_SMALL_THRESHOLD 85
+#define SMALL_TO_LARGE_THRESHOLD 72
+
+
 
 // Define shutdown stages
 Stage shutdownStages[] = {

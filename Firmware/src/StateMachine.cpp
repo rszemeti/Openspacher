@@ -7,11 +7,11 @@ static StateMachine* smInstance = nullptr;
 
 // Helper condition functions
 bool StateMachine::largeCondition() {
-    return smInstance && smInstance->hardware.getWaterTemp() > 65.0;
+    return smInstance && smInstance->hardware.getWaterTemp() > SMALL_TO_LARGE_THRESHOLD;
 }
 
 bool StateMachine::smallCondition() {
-    return smInstance && smInstance->hardware.getWaterTemp() < 55.0;
+    return smInstance && smInstance->hardware.getWaterTemp() < LARGE_TO_SMALL_THRESHOLD;
 }
 
 // Linear interpolation helper
@@ -87,9 +87,9 @@ void StateMachine::resetHandler(State state) {
     stageStartTime = millis();
 }
 
-// Tick through the current stage logic
 void StateMachine::tickHandler() {
     if (currentStageIndex >= totalStages) {
+        // Transition to the next state
         currentState = nextState;
         resetHandler(currentState);
         return;
@@ -126,8 +126,23 @@ void StateMachine::tickHandler() {
     if (currentStage.duration > 0.0 && elapsedTime >= currentStage.duration * 1000) {
         currentStageIndex++;
         stageStartTime = millis();
+
+        // Check if this is the final stage
+        if (currentStageIndex >= totalStages) {
+            // Call the helper function for transition check
+            Serial.println("Final stage completed. Checking for transition...");
+            // Perform any additional logic for state transition here
+        }
     } else if (currentStage.condition && currentStage.condition()) {
         currentStageIndex++;
         stageStartTime = millis();
+
+        // Check if this is the final stage
+        if (currentStageIndex >= totalStages) {
+            // Call the helper function for transition check
+            Serial.println("Final stage completed. Checking for transition...");
+            // Perform any additional logic for state transition here
+        }
     }
 }
+
